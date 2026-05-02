@@ -1,52 +1,42 @@
 import { useState, useEffect } from 'react'
-import { SECTIONS } from './questions.js'
+import { TOPIC, EXAM_TITLE } from './config.js'
 import { sendToSheet } from './sheets.js'
 
-// ─── localStorage helpers (keyed per student name) ───────────────────────────
-const STORE_KEY = (name) => `pyexam_${name.trim().toLowerCase().replace(/\s+/g, '_')}`
+// ─── Dynamically load questions based on VITE_TOPIC env variable ──────────────
+// To add a new topic: create src/questions/<topic>.js, set VITE_TOPIC=<topic> in Vercel
+const topicModules = import.meta.glob('./questions/*.js', { eager: true })
+const mod = topicModules[`./questions/${TOPIC}.js`]
+const SECTIONS = mod ? mod.SECTIONS : []
+if (!mod) console.error(`No question file found for topic: "${TOPIC}". Create src/questions/${TOPIC}.js`)
+
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+const STORE_KEY = (name) => `exam_${TOPIC}_${name.trim().toLowerCase().replace(/\s+/g, '_')}`
 
 function loadHistory(name) {
-  try {
-    return JSON.parse(localStorage.getItem(STORE_KEY(name)) || '[]')
-  } catch { return [] }
+  try { return JSON.parse(localStorage.getItem(STORE_KEY(name)) || '[]') }
+  catch { return [] }
 }
 
 function saveResult(name, result) {
   const history = loadHistory(name)
-  history.unshift(result)          // newest first
+  history.unshift(result)
   localStorage.setItem(STORE_KEY(name), JSON.stringify(history.slice(0, 20)))
 }
 
-// ─── shared style tokens ─────────────────────────────────────────────────────
+// ─── Shared styles ────────────────────────────────────────────────────────────
 const S = {
-  card: {
-    background: '#111827',
-    border: '1px solid #1f2937',
-    borderRadius: 16,
-    padding: 32
-  },
+  card: { background: '#111827', border: '1px solid #1f2937', borderRadius: 16, padding: 32 },
   btn: (color = '#3b5bdb') => ({
-    background: color,
-    color: '#fff',
-    border: 'none',
-    borderRadius: 10,
-    padding: '12px 28px',
-    fontSize: 15,
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit'
+    background: color, color: '#fff', border: 'none', borderRadius: 10,
+    padding: '12px 28px', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit'
   }),
   ghost: {
-    background: 'transparent',
-    color: '#94a3b8',
-    border: '1px solid #1f2937',
-    borderRadius: 10,
-    padding: '10px 22px',
-    fontSize: 14,
-    cursor: 'pointer',
-    fontFamily: 'inherit'
+    background: 'transparent', color: '#94a3b8', border: '1px solid #1f2937',
+    borderRadius: 10, padding: '10px 22px', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit'
   }
 }
+
+const TOTAL_Q = SECTIONS.reduce((s, sec) => s + sec.questions.length, 0)
 
 // ─── SCREEN: Login ────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
@@ -62,35 +52,29 @@ function LoginScreen({ onLogin }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ ...S.card, maxWidth: 480, width: '100%', textAlign: 'center' }}>
-        {/* logo */}
         <div style={{ fontSize: 52, marginBottom: 8 }}>🐍</div>
-        <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>Python Course Exam</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>{EXAM_TITLE}</h1>
         <p style={{ color: '#64748b', fontSize: 14, marginBottom: 32 }}>
-          {SECTIONS.length} topics &nbsp;·&nbsp; {SECTIONS.reduce((s, x) => s + x.questions.length, 0)} questions
+          {SECTIONS.length} topics &nbsp;·&nbsp; {TOTAL_Q} questions
         </p>
-
         <label style={{ display: 'block', textAlign: 'left', marginBottom: 8, fontSize: 14, color: '#94a3b8' }}>
           Your name
         </label>
         <input
-          autoFocus
-          value={name}
+          autoFocus value={name}
           onChange={e => { setName(e.target.value); setErr('') }}
           onKeyDown={e => e.key === 'Enter' && handleStart()}
           placeholder="e.g. Priya Sharma"
           style={{
             width: '100%', padding: '13px 16px', fontSize: 16,
             background: '#1a2035', border: `1px solid ${err ? '#ef4444' : '#1f2937'}`,
-            borderRadius: 10, color: '#e2e8f0', outline: 'none',
-            fontFamily: 'inherit', marginBottom: 8
+            borderRadius: 10, color: '#e2e8f0', outline: 'none', fontFamily: 'inherit', marginBottom: 8
           }}
         />
         {err && <p style={{ color: '#ef4444', fontSize: 13, marginBottom: 12, textAlign: 'left' }}>{err}</p>}
-
         <button style={{ ...S.btn(), width: '100%', marginTop: 16, padding: '14px' }} onClick={handleStart}>
           Start Exam →
         </button>
-
         <p style={{ marginTop: 20, fontSize: 13, color: '#475569' }}>
           Your scores are saved privately in this browser.
         </p>
@@ -101,38 +85,29 @@ function LoginScreen({ onLogin }) {
 
 // ─── SCREEN: Exam ─────────────────────────────────────────────────────────────
 function ExamScreen({ studentName, onFinish }) {
-  // flatten all questions, tagging section info
   const allQ = SECTIONS.flatMap(sec =>
     sec.questions.map(q => ({ ...q, secId: sec.id, secLabel: sec.label, secColor: sec.color }))
   )
-
   const [idx, setIdx] = useState(0)
   const [selected, setSelected] = useState(null)
   const [confirmed, setConfirmed] = useState(false)
-  const [answers, setAnswers] = useState([])   // {secId, secLabel, correct}
-  const [secProgress, setSecProgress] = useState({}) // secId → {correct, total}
+  const [answers, setAnswers] = useState([])
 
   const current = allQ[idx]
-  const progress = ((idx) / allQ.length) * 100
+  const progress = (idx / allQ.length) * 100
 
   function confirm() {
     if (selected === null) return
-    const correct = selected === current.answer
-    const rec = { secId: current.secId, secLabel: current.secLabel, correct }
-    setAnswers(prev => [...prev, rec])
-    setSecProgress(prev => {
-      const s = prev[current.secId] || { correct: 0, total: 0 }
-      return { ...prev, [current.secId]: { correct: s.correct + (correct ? 1 : 0), total: s.total + 1 } }
-    })
+    setAnswers(prev => [...prev, { secId: current.secId, secLabel: current.secLabel, correct: selected === current.answer }])
     setConfirmed(true)
   }
 
   function next() {
-    if (idx + 1 >= allQ.length) {
-      // build result
-      const totalCorrect = answers.filter(a => a.correct).length + (selected === current.answer ? 1 : 0)
-      const topicBreakdown = {}
+    const isLast = idx + 1 >= allQ.length
+    if (isLast) {
       const allAnswers = [...answers, { secId: current.secId, secLabel: current.secLabel, correct: selected === current.answer }]
+      const totalCorrect = allAnswers.filter(a => a.correct).length
+      const topicBreakdown = {}
       allAnswers.forEach(a => {
         if (!topicBreakdown[a.secId]) topicBreakdown[a.secId] = { label: a.secLabel, correct: 0, total: 0 }
         topicBreakdown[a.secId].correct += a.correct ? 1 : 0
@@ -140,19 +115,16 @@ function ExamScreen({ studentName, onFinish }) {
       })
       const result = {
         date: new Date().toLocaleString('en-IN'),
-        total: allQ.length,
-        correct: totalCorrect,
+        total: allQ.length, correct: totalCorrect,
         pct: Math.round((totalCorrect / allQ.length) * 100),
         topics: topicBreakdown
       }
       saveResult(studentName, result)
-      sendToSheet(studentName, result) // fire-and-forget, sends to Google Sheets
+      sendToSheet(studentName, result)
       onFinish(result)
       return
     }
-    setIdx(idx + 1)
-    setSelected(null)
-    setConfirmed(false)
+    setIdx(idx + 1); setSelected(null); setConfirmed(false)
   }
 
   const optionStyle = (i) => {
@@ -165,38 +137,29 @@ function ExamScreen({ studentName, onFinish }) {
     return {
       width: '100%', textAlign: 'left', padding: '13px 18px', marginBottom: 8,
       background: bg, border: `1.5px solid ${border}`, borderRadius: 10, color,
-      cursor: confirmed ? 'default' : 'pointer', fontSize: 14, fontFamily: 'inherit',
-      transition: 'all 0.15s'
+      cursor: confirmed ? 'default' : 'pointer', fontSize: 14, fontFamily: 'inherit', transition: 'all 0.15s'
     }
   }
 
   return (
     <div style={{ minHeight: '100vh', padding: '20px 20px 60px' }}>
       <div style={{ maxWidth: 680, margin: '0 auto' }}>
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
             <div style={{ fontSize: 13, color: '#64748b' }}>Hi, {studentName}</div>
-            <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>
-              Question {idx + 1} of {allQ.length}
-            </div>
+            <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>Question {idx + 1} of {allQ.length}</div>
           </div>
-          <div style={{
-            background: '#1a2035', borderRadius: 8, padding: '6px 14px',
-            fontSize: 13, color: '#94a3b8', border: '1px solid #1f2937'
-          }}>
+          <div style={{ background: '#1a2035', borderRadius: 8, padding: '6px 14px', fontSize: 13, color: '#94a3b8', border: '1px solid #1f2937' }}>
             📚 {current.secLabel}
           </div>
         </div>
 
-        {/* Progress bar */}
         <div style={{ background: '#1a2035', borderRadius: 4, height: 4, marginBottom: 28 }}>
           <div style={{ background: current.secColor, height: 4, borderRadius: 4, width: `${progress}%`, transition: 'width 0.3s' }} />
         </div>
 
-        {/* Question card */}
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <p style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: 24 }}>
+          <p style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.7, whiteSpace: 'pre-wrap', marginBottom: 24, fontFamily: 'JetBrains Mono, monospace' }}>
             {current.q}
           </p>
           {current.options.map((opt, i) => (
@@ -209,7 +172,6 @@ function ExamScreen({ studentName, onFinish }) {
           ))}
         </div>
 
-        {/* Explanation */}
         {confirmed && (
           <div style={{
             background: selected === current.answer ? '#052e16' : '#1a0a00',
@@ -223,12 +185,9 @@ function ExamScreen({ studentName, onFinish }) {
           </div>
         )}
 
-        {/* Action buttons */}
         <div style={{ display: 'flex', gap: 12 }}>
           {!confirmed
-            ? <button style={{ ...S.btn(), flex: 1, opacity: selected === null ? 0.4 : 1 }} onClick={confirm}>
-                Confirm Answer
-              </button>
+            ? <button style={{ ...S.btn(), flex: 1, opacity: selected === null ? 0.4 : 1 }} onClick={confirm}>Confirm Answer</button>
             : <button style={{ ...S.btn('#0f766e'), flex: 1 }} onClick={next}>
                 {idx + 1 >= allQ.length ? 'See My Results →' : 'Next Question →'}
               </button>
@@ -246,11 +205,9 @@ function ResultsScreen({ studentName, result, onViewHistory, onRetake }) {
               : pct >= 75 ? { label: 'Good', color: '#3b82f6' }
               : pct >= 60 ? { label: 'Pass', color: '#f59e0b' }
               : { label: 'Needs Work', color: '#ef4444' }
-
-  const [syncStatus, setSyncStatus] = useState('sending') // sending | done | skipped
+  const [syncStatus, setSyncStatus] = useState('sending')
 
   useEffect(() => {
-    // Check after 3s — if sheet not configured it will be 'skipped'
     const t = setTimeout(() => setSyncStatus('done'), 3000)
     return () => clearTimeout(t)
   }, [])
@@ -258,27 +215,18 @@ function ResultsScreen({ studentName, result, onViewHistory, onRetake }) {
   return (
     <div style={{ minHeight: '100vh', padding: '32px 20px' }}>
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
-        {/* Score hero */}
         <div style={{ ...S.card, textAlign: 'center', marginBottom: 20 }}>
-          <div style={{ fontSize: 48, marginBottom: 8 }}>
-            {pct >= 75 ? '🎉' : pct >= 60 ? '📘' : '💪'}
-          </div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
-            {studentName}'s Result
-          </h2>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>{pct >= 75 ? '🎉' : pct >= 60 ? '📘' : '💪'}</div>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>{studentName}'s Result</h2>
           <p style={{ color: '#64748b', fontSize: 13, marginBottom: 20 }}>{result.date}</p>
-
           <div style={{ fontSize: 56, fontWeight: 700, color: grade.color, lineHeight: 1 }}>{pct}%</div>
           <div style={{ color: grade.color, fontWeight: 600, marginTop: 6, marginBottom: 4 }}>{grade.label}</div>
           <div style={{ color: '#64748b', fontSize: 14 }}>{result.correct} / {result.total} correct</div>
-
-          {/* Sheet sync badge */}
           <div style={{ marginTop: 16, fontSize: 12, color: syncStatus === 'sending' ? '#64748b' : '#22c55e' }}>
             {syncStatus === 'sending' ? '⏳ Sending score to teacher…' : '✓ Score sent to teacher'}
           </div>
         </div>
 
-        {/* Topic breakdown */}
         <div style={{ ...S.card, marginBottom: 20 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 18, color: '#94a3b8' }}>Topic Breakdown</h3>
           {Object.values(result.topics).map(t => {
@@ -301,7 +249,6 @@ function ResultsScreen({ studentName, result, onViewHistory, onRetake }) {
           })}
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 12 }}>
           <button style={{ ...S.btn('#3b5bdb'), flex: 1 }} onClick={onViewHistory}>My Score History</button>
           <button style={{ ...S.ghost, flex: 1 }} onClick={onRetake}>Retake Exam</button>
@@ -314,7 +261,6 @@ function ResultsScreen({ studentName, result, onViewHistory, onRetake }) {
 // ─── SCREEN: History ──────────────────────────────────────────────────────────
 function HistoryScreen({ studentName, onBack }) {
   const history = loadHistory(studentName)
-
   return (
     <div style={{ minHeight: '100vh', padding: '32px 20px' }}>
       <div style={{ maxWidth: 620, margin: '0 auto' }}>
@@ -322,31 +268,24 @@ function HistoryScreen({ studentName, onBack }) {
           <button style={S.ghost} onClick={onBack}>← Back</button>
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 700 }}>My Score History</h2>
-            <p style={{ color: '#64748b', fontSize: 13 }}>{studentName}</p>
+            <p style={{ color: '#64748b', fontSize: 13 }}>{studentName} · {EXAM_TITLE}</p>
           </div>
         </div>
-
         {history.length === 0
-          ? <div style={{ ...S.card, textAlign: 'center', color: '#475569', padding: 48 }}>
-              No attempts yet.
-            </div>
+          ? <div style={{ ...S.card, textAlign: 'center', color: '#475569', padding: 48 }}>No attempts yet.</div>
           : history.map((r, i) => (
             <div key={i} style={{ ...S.card, marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontSize: 13, color: '#64748b' }}>{r.date}</span>
-                <span style={{
-                  fontSize: 20, fontWeight: 700,
-                  color: r.pct >= 75 ? '#22c55e' : r.pct >= 60 ? '#f59e0b' : '#ef4444'
-                }}>{r.pct}%</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: r.pct >= 75 ? '#22c55e' : r.pct >= 60 ? '#f59e0b' : '#ef4444' }}>
+                  {r.pct}%
+                </span>
               </div>
               <div style={{ fontSize: 13, color: '#94a3b8' }}>{r.correct}/{r.total} correct</div>
               {r.topics && (
                 <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {Object.values(r.topics).map(t => (
-                    <span key={t.label} style={{
-                      fontSize: 12, padding: '3px 10px', borderRadius: 20,
-                      background: '#1a2035', border: '1px solid #1f2937', color: '#94a3b8'
-                    }}>
+                    <span key={t.label} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, background: '#1a2035', border: '1px solid #1f2937', color: '#94a3b8' }}>
                       {t.label}: {Math.round((t.correct / t.total) * 100)}%
                     </span>
                   ))}
@@ -360,36 +299,14 @@ function HistoryScreen({ studentName, onBack }) {
   )
 }
 
-// ─── ROOT App ─────────────────────────────────────────────────────────────────
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [screen, setScreen] = useState('login')  // login | exam | results | history
+  const [screen, setScreen] = useState('login')
   const [studentName, setStudentName] = useState('')
   const [lastResult, setLastResult] = useState(null)
 
-  function handleLogin(name) {
-    setStudentName(name)
-    setScreen('exam')
-  }
-
-  function handleFinish(result) {
-    setLastResult(result)
-    setScreen('results')
-  }
-
-  if (screen === 'login') return <LoginScreen onLogin={handleLogin} />
-  if (screen === 'exam')  return <ExamScreen studentName={studentName} onFinish={handleFinish} />
-  if (screen === 'results') return (
-    <ResultsScreen
-      studentName={studentName}
-      result={lastResult}
-      onViewHistory={() => setScreen('history')}
-      onRetake={() => setScreen('exam')}
-    />
-  )
-  if (screen === 'history') return (
-    <HistoryScreen
-      studentName={studentName}
-      onBack={() => setScreen('results')}
-    />
-  )
+  if (screen === 'login')   return <LoginScreen onLogin={n => { setStudentName(n); setScreen('exam') }} />
+  if (screen === 'exam')    return <ExamScreen studentName={studentName} onFinish={r => { setLastResult(r); setScreen('results') }} />
+  if (screen === 'results') return <ResultsScreen studentName={studentName} result={lastResult} onViewHistory={() => setScreen('history')} onRetake={() => setScreen('exam')} />
+  if (screen === 'history') return <HistoryScreen studentName={studentName} onBack={() => setScreen('results')} />
 }
