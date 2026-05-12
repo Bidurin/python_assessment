@@ -1,8 +1,8 @@
 // Python Complete Course — Full Question Bank
-// 60 questions | 15 sections | Intermediate–Hard
+// 75 questions | 14 sections | Intermediate–Hard
 // Code snippet → predict output style throughout
-// Balanced answer distribution: ~15 per option (A/B/C/D)
-// Last 3 sections merged into Advanced Python (5 questions)
+// Balanced answer distribution across A/B/C/D
+// Classes & OOP removed — questions redistributed to Strings, Loops, Dictionaries
 
 export const EXAM_TITLE = 'Python Complete Course Exam'
 
@@ -77,6 +77,51 @@ export const SECTIONS = [
         answer: 3,
         explain: '.split("-") gives ["2024","05","15"]. parts[-1] is the last element → "15".'
       },
+      {
+        q: 'What is the output?\n\ns = "hello"\nprint(s.center(11, "*"))',
+        options: ['***hello***', '**hello***', '***hello**', 'hello*****'],
+        answer: 0,
+        explain: '.center(11,"*") pads the string to width 11 with * on both sides. "hello" is 5 chars, so 3 stars each side → "***hello***".'
+      },
+      {
+        q: 'What does this print?\n\nwords = "the quick brown fox"\nresult = " ".join(w.capitalize() for w in words.split())\nprint(result)',
+        options: [
+          'the quick brown fox',
+          'The Quick Brown Fox',
+          'THE QUICK BROWN FOX',
+          'Error'
+        ],
+        answer: 1,
+        explain: 'split() → ["the","quick","brown","fox"]. capitalize() makes first letter upper, rest lower. join → "The Quick Brown Fox".'
+      },
+      {
+        q: 'What is the output?\n\ntext = "banana"\nprint(text.count("an"))\nprint(text.find("na"))',
+        options: [
+          '2 and 1',
+          '2 and 2',
+          '1 and 2',
+          'Error'
+        ],
+        answer: 1,
+        explain: '.count("an") finds non-overlapping occurrences: b-AN-ANa → 2. .find("na") returns first index: ba-NA → index 2.'
+      },
+      {
+        q: 'What is the output?\n\ns = "Hello, World!"\nprint(s.startswith("Hello"))\nprint(s.endswith("world!"))',
+        options: [
+          'True and True',
+          'True and False',
+          'False and True',
+          'False and False'
+        ],
+        answer: 1,
+        explain: '.startswith("Hello") → True. .endswith("world!") → False because "W" is uppercase in "World!" but the check uses lowercase "w". String methods are case-sensitive.'
+      },
+      {
+        q: 'What does this print?\n\ntext = "  python  "\nparts = [text.strip(), text.lstrip(), text.rstrip()]\nprint(len(parts[0]), len(parts[1]), len(parts[2]))',
+        options: ['6 8 8', '6 8 10', '8 8 6', '6 6 6'],
+        answer: 0,
+        explain: 'strip() removes both sides → "python" len=6. lstrip() removes left only → "python  " len=8. rstrip() removes right only → "  python" len=8.'
+      }
     ]
   },
 
@@ -177,6 +222,24 @@ export const SECTIONS = [
         options: ['positive', 'zero', 'Error', 'negative'],
         answer: 3,
         explain: 'n=-5 → not >0 → evaluate second ternary: n!=0 → "negative".'
+      },
+      {
+        q: 'What is the output?\n\nx = 10\ny = 20\nz = 30\nif x < y and y < z:\n    print("ascending")\nelif x > y or y > z:\n    print("not ascending")\nelse:\n    print("equal")',
+        options: ['not ascending', 'equal', 'ascending', 'Error'],
+        answer: 2,
+        explain: 'x<y is True (10<20) AND y<z is True (20<30). Both True → "ascending" is printed.'
+      },
+      {
+        q: 'What does this print?\n\nnum = 42\nif num % 2 == 0:\n    if num % 3 == 0:\n        print("div by 6")\n    else:\n        print("div by 2 only")\nelse:\n    print("odd")',
+        options: ['div by 2 only', 'odd', 'Error', 'div by 6'],
+        answer: 3,
+        explain: '42%2=0 → enters even branch. 42%3=0 → enters inner if → prints "div by 6". 42 is divisible by both 2 and 3, so by 6.'
+      },
+      {
+        q: 'What is the output?\n\nage = 17\ncountry = "UK"\nif age >= 18 or country == "UK":\n    print("allowed")\nelse:\n    print("denied")',
+        options: ['denied', 'True', 'allowed', 'Error'],
+        answer: 2,
+        explain: 'age>=18 is False but country=="UK" is True. False OR True → True → prints "allowed".'
       }
     ]
   },
@@ -212,6 +275,47 @@ export const SECTIONS = [
         answer: 3,
         explain: 'continue skips even numbers. Only odd values 1 and 3 are appended → [1, 3].'
       },
+      {
+        q: 'What is the output?\n\npairs = [(1,"a"),(2,"b"),(3,"c")]\nfor num, letter in pairs:\n    print(num, letter, end=" ")',
+        options: [
+          '(1,a) (2,b) (3,c)',
+          '1 a 2 b 3 c',
+          '[1,2,3] [a,b,c]',
+          'Error'
+        ],
+        answer: 1,
+        explain: 'Tuple unpacking in a for loop: each (num, letter) pair is unpacked. Prints each pair separated by space on same line.'
+      },
+      {
+        q: 'What does this print?\n\nresult = []\nfor i in range(1, 6):\n    if i == 3:\n        continue\n    if i == 5:\n        break\n    result.append(i)\nprint(result)',
+        options: ['[1, 2, 4]', '[1, 2, 3, 4]', '[1, 2]', 'Error'],
+        answer: 0,
+        explain: 'i=1→append, i=2→append, i=3→continue(skip), i=4→append, i=5→break. result=[1,2,4].'
+      },
+      {
+        q: 'What is the output?\n\nfor i in range(3):\n    for j in range(3):\n        if i == j:\n            print(i, end=" ")',
+        options: ['0 0 1 1 2 2', '0 1 2 0 1 2', 'Error', '0 1 2'],
+        answer: 3,
+        explain: 'Only prints when i==j: (0,0)→0, (1,1)→1, (2,2)→2. Output: "0 1 2".'
+      },
+      {
+        q: 'What does this print?\n\ntotal = 0\nfor i in range(1, 11):\n    total += i\nprint(total)',
+        options: ['50', '110', '55', '45'],
+        answer: 2,
+        explain: 'Sum of 1 to 10: 1+2+...+10 = 55. range(1,11) goes from 1 to 10 inclusive.'
+      },
+      {
+        q: 'What is the output?\n\ndata = [3, 1, 4, 1, 5, 9]\nmax_val = data[0]\nfor x in data:\n    if x > max_val:\n        max_val = x\nprint(max_val)',
+        options: ['3', '1', '5', '9'],
+        answer: 3,
+        explain: 'Manual max loop: starts at 3, updates when x>max_val. 4>3→4, 5>4→5, 9>5→9. Final max_val=9.'
+      },
+      {
+        q: 'What does this print?\n\nresult = {}\nfor char in "mississippi":\n    result[char] = result.get(char, 0) + 1\nprint(result["s"])',
+        options: ['2', '3', '4', '5'],
+        answer: 2,
+        explain: 'Counts character frequencies. "s" appears 4 times in "mississippi": m-i-SS-i-SS-i-pp-i → 4.'
+      }
     ]
   },
 
@@ -266,6 +370,12 @@ export const SECTIONS = [
         ],
         answer: 2,
         explain: 'mystery() removes duplicates preserving order. 1 and 5 appear twice — first occurrence kept. Result: [3,1,4,5,9,2,6].'
+      },
+      {
+        q: 'What is the output?\n\nnums = [1, 2, 3, 4, 5]\nprint(list(filter(lambda x: x % 2 == 0, nums)))',
+        options: ['[1, 3, 5]', '[2, 4]', '[1, 2, 3, 4, 5]', 'Error'],
+        answer: 1,
+        explain: 'filter() keeps elements where the lambda returns True. x%2==0 is True for even numbers → [2, 4].'
       }
     ]
   },
@@ -370,6 +480,41 @@ export const SECTIONS = [
         answer: 0,
         explain: '.update() merges in the new dict. Existing "b" overwritten with 99. New "c" added. "a" unchanged.'
       },
+      {
+        q: 'What is the output?\n\nd = {"a": 3, "b": 1, "c": 2}\nprint(min(d, key=lambda k: d[k]))',
+        options: ['a', 'b', 'c', 'Error'],
+        answer: 1,
+        explain: 'min() over dict iterates keys. key=lambda k: d[k] compares by value. Smallest value is d["b"]=1 → key "b".'
+      },
+      {
+        q: 'What does this print?\n\nd = {}\nfor i in range(5):\n    d[i] = i ** 2\nprint(d[3])',
+        options: ['3', '6', '9', 'KeyError'],
+        answer: 2,
+        explain: 'Loop builds {0:0, 1:1, 2:4, 3:9, 4:16}. d[3] = 3**2 = 9.'
+      },
+      {
+        q: 'What is the output?\n\nscores = {"Alice": 85, "Bob": 92, "Carol": 78}\ntop = max(scores, key=scores.get)\nprint(top)',
+        options: ['85', 'Bob', 'Alice', '92'],
+        answer: 1,
+        explain: 'max() over dict gives the key with highest value. scores.get as key function → Bob has 92 (highest). Returns the key "Bob".'
+      },
+      {
+        q: 'What does this print?\n\nd = {"x": 10, "y": 20, "z": 30}\nkeys = [k for k, v in d.items() if v > 15]\nprint(keys)',
+        options: ['[10, 20, 30]', "['x']", "['y', 'z']", 'Error'],
+        answer: 2,
+        explain: 'List comprehension over items: v>15 filters y(20) and z(30). Keys of those: ["y","z"].'
+      },
+      {
+        q: 'What is the output?\n\nd1 = {"a": 1, "b": 2}\nd2 = {"b": 3, "c": 4}\nmerged = {**d1, **d2}\nprint(merged)',
+        options: [
+          "{'a': 1, 'b': 2, 'c': 4}",
+          "{'a': 1, 'b': 3, 'c': 4}",
+          "{'a': 1, 'b': 2, 'b': 3, 'c': 4}",
+          'Error'
+        ],
+        answer: 1,
+        explain: '{**d1, **d2} unpacks both dicts. When keys clash, the last one wins — d2["b"]=3 overwrites d1["b"]=2. Result: {"a":1,"b":3,"c":4}.'
+      }
     ]
   },
 
@@ -498,57 +643,7 @@ export const SECTIONS = [
     ]
   },
 
-  // ── 13. Classes & OOP ★ ──────────────────────────────────────────────────
-  {
-    id: 'oop',
-    label: 'Classes & OOP',
-    starred: true,
-    color: '#7c3aed',
-    questions: [
-      {
-        q: 'What does this print?\n\nclass Counter:\n    count = 0\n    def __init__(self):\n        Counter.count += 1\n\na = Counter()\nb = Counter()\nc = Counter()\nprint(Counter.count)',
-        options: ['1', '0', '3', 'Error'],
-        answer: 2,
-        explain: 'count is a CLASS variable shared by all instances. Each __init__ increments it. 3 instances → Counter.count=3.'
-      },
-      {
-        q: 'What is the output?\n\nclass Parent:\n    def greet(self):\n        return "Hello from Parent"\n\nclass Child(Parent):\n    def greet(self):\n        return super().greet() + " and Child"\n\nprint(Child().greet())',
-        options: [
-          'Hello from Parent',
-          'Hello from Child',
-          'Hello from Parent and Child',
-          'Error'
-        ],
-        answer: 2,
-        explain: 'super().greet() calls Parent\'s greet() → "Hello from Parent". Child appends " and Child".'
-      },
-      {
-        q: 'What does @property do?\n\nclass Circle:\n    def __init__(self, r):\n        self.r = r\n    @property\n    def area(self):\n        return 3.14 * self.r ** 2\n\nc = Circle(5)\nprint(c.area)',
-        options: [
-          'Error — area() needs parentheses',
-          'Prints the function object',
-          'Prints None',
-          'Prints 78.5'
-        ],
-        answer: 3,
-        explain: '@property lets a method be accessed like an attribute (no parentheses). c.area → 3.14*25 = 78.5.'
-      },
-      {
-        q: 'What is the output?\n\nclass A:\n    def __init__(self):\n        self.x = 1\n\nclass B(A):\n    def __init__(self):\n        super().__init__()\n        self.y = 2\n\nb = B()\nprint(b.x, b.y)',
-        options: ['1 2', 'Error — x not defined in B', '0 2', 'None None'],
-        answer: 0,
-        explain: 'super().__init__() calls A\'s __init__ which sets self.x=1. Then B sets self.y=2. Both available on b.'
-      },
-      {
-        q: 'What is the output?\n\nclass MyList:\n    def __init__(self, data):\n        self.data = data\n    def __len__(self):\n        return len(self.data)\n    def __getitem__(self, i):\n        return self.data[i]\n\nml = MyList([10, 20, 30])\nprint(len(ml), ml[1])',
-        options: ['Error', '3 10', '3 20', '[10,20,30] 20'],
-        answer: 2,
-        explain: '__len__ returns 3. __getitem__ allows indexing: ml[1] → self.data[1] = 20.'
-      }
-    ]
-  },
-
-  // ── 14. Recursion & Algorithms ★ ─────────────────────────────────────────
+  // ── 13. Recursion & Algorithms ★ ─────────────────────────────────────────
   {
     id: 'recursion',
     label: 'Recursion & Algorithms',
